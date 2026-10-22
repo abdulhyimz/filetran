@@ -150,7 +150,11 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
                     if not recipient:
                         await send_json(ws, {"type": "error", "message": "Kullanıcı çevrimdışı"})
                         continue
-                    size = int(data.get("size", 0))
+                    try:
+                        size = int(data.get("size", 0))
+                    except (TypeError, ValueError):
+                        await send_json(ws, {"type": "error", "message": "Geçersiz dosya boyutu"})
+                        continue
                     if size <= 0 or size > MAX_FILE_SIZE:
                         await send_json(ws, {"type": "error", "message": "Dosya boyutu limit dışında"})
                         continue
@@ -180,7 +184,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
 
             elif msg_type == "transfer_response":
                 transfer_id = data.get("transferId")
-                accept = bool(data.get("accept"))
+                accept = data.get("accept") is True
                 async with LOCK:
                     transfer = TRANSFERS.get(transfer_id)
                     if not transfer or transfer.recipient_id != peer_id:
